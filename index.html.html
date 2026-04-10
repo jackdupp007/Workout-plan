@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#1D9E75">
+<title>3-3-3 Workout Tracker</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --accent: #1D9E75;
+    --accent-light: #E1F5EE;
+    --accent-dark: #085041;
+    --bg: #ffffff;
+    --bg2: #f7f7f5;
+    --bg3: #f0f0ec;
+    --text: #1a1a18;
+    --text2: #666660;
+    --border: rgba(0,0,0,0.1);
+    --radius: 10px;
+    --radius-lg: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a18;
+      --bg2: #242422;
+      --bg3: #2e2e2b;
+      --text: #f0f0ec;
+      --text2: #9a9a94;
+      --border: rgba(255,255,255,0.1);
+    }
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 16px; line-height: 1.5; }
+  body { display: flex; flex-direction: column; max-width: 600px; margin: 0 auto; }
+
+  .header { padding: 1.25rem 1.25rem 0.75rem; border-bottom: 0.5px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 10; }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header p { font-size: 12px; color: var(--text2); margin-top: 1px; letter-spacing: 0.04em; }
+
+  .nav { display: flex; border-bottom: 0.5px solid var(--border); background: var(--bg); position: sticky; top: 64px; z-index: 10; }
+  .nav-btn { flex: 1; padding: 12px 0; font-size: 14px; border: none; background: none; color: var(--text2); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s, border-color 0.15s; font-family: inherit; }
+  .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
+
+  .page { display: none; flex: 1; overflow-y: auto; padding: 1.25rem; }
+  .page.active { display: block; }
+
+  .day-tabs { display: flex; gap: 8px; margin-bottom: 1.25rem; }
+  .day-btn { flex: 1; padding: 9px 4px; font-size: 13px; border: 0.5px solid var(--border); background: var(--bg2); color: var(--text2); border-radius: var(--radius); cursor: pointer; font-family: inherit; transition: all 0.15s; }
+  .day-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 500; }
+
+  .day-panel { display: none; }
+  .day-panel.active { display: block; }
+
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.1rem 1.1rem; margin-bottom: 1rem; }
+  .card-title { font-size: 15px; font-weight: 600; }
+  .card-sub { font-size: 12px; color: var(--text2); margin-top: 2px; margin-bottom: 1rem; }
+
+  .section-lbl { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text2); margin: 1rem 0 0.6rem; }
+
+  .ex-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 11px 0; border-top: 0.5px solid var(--border); }
+  .ex-row:first-of-type { border-top: none; padding-top: 0; }
+  .ex-info { flex: 1; min-width: 0; }
+  .ex-name { font-size: 14px; font-weight: 500; }
+  .ex-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .ex-actions { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; }
+  .badge-strength { background: #E1F5EE; color: #085041; }
+  .badge-balance { background: #E6F1FB; color: #0C447C; }
+  .badge-power { background: #FAEEDA; color: #633806; }
+  @media (prefers-color-scheme: dark) {
+    .badge-strength { background: #04342C; color: #9FE1CB; }
+    .badge-balance { background: #042C53; color: #B5D4F4; }
+    .badge-power { background: #412402; color: #FAC775; }
+  }
+  .guide-link { font-size: 12px; color: var(--accent); background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit; padding: 0; }
+
+  .weight-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+  .weight-lbl { font-size: 11px; color: var(--text2); }
+  .weight-input { width: 76px; padding: 7px 8px; font-size: 15px; border: 0.5px solid var(--border); border-radius: var(--radius); background: var(--bg2); color: var(--text); text-align: center; font-family: inherit; -webkit-appearance: none; }
+  .weight-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+
+  .notes-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; display: block; }
+  .notes { width: 100%; padding: 10px; font-size: 14px; border: 0.5px solid var(--border); border-radius: var(--radius); background: var(--bg2); color: var(--text); resize: vertical; min-height: 68px; font-family: inherit; }
+  .notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+
+  .log-btn { display: block; width: 100%; padding: 14px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 1.25rem; font-family: inherit; transition: opacity 0.15s; }
+  .log-btn:active { opacity: 0.82; }
+
+  .history-item { background: var(--bg2); border-radius: var(--radius-lg); padding: 1rem 1.1rem; margin-bottom: 0.75rem; }
+  .hi-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+  .hi-day { font-size: 14px; font-weight: 600; }
+  .hi-date { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .del-btn { font-size: 12px; color: #E24B4A; background: none; border: none; cursor: pointer; font-family: inherit; padding: 0; flex-shrink: 0; }
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pill { font-size: 12px; padding: 4px 10px; background: var(--bg3); border-radius: 20px; color: var(--text2); }
+  .pill strong { color: var(--text); font-weight: 500; }
+  .hi-note { margin-top: 10px; font-size: 13px; color: var(--text2); font-style: italic; }
+
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+  .stat { background: var(--bg2); border-radius: var(--radius); padding: 0.9rem 0.75rem; text-align: center; }
+  .stat-val { font-size: 26px; font-weight: 600; }
+  .stat-lbl { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  .pb-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 0.5px solid var(--border); }
+  .pb-row:first-of-type { border-top: none; }
+  .pb-name { font-size: 14px; }
+  .pb-val { font-size: 14px; font-weight: 500; }
+  .pr-tag { font-size: 11px; background: #FAEEDA; color: #633806; padding: 1px 6px; border-radius: 10px; margin-left: 5px; }
+  @media (prefers-color-scheme: dark) { .pr-tag { background: #412402; color: #FAC775; } }
+
+  .empty { text-align: center; padding: 3rem 1rem; color: var(--text2); font-size: 14px; line-height: 1.8; }
+
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: flex-end; justify-content: center; }
+  .overlay.open { display: flex; }
+  .sheet { background: var(--bg); border-radius: 20px 20px 0 0; padding: 1.5rem 1.25rem 2.5rem; max-height: 80vh; overflow-y: auto; width: 100%; max-width: 600px; }
+  .sheet-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 1.25rem; }
+  .sheet h2 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .sheet .focus-tag { display: inline-block; font-size: 12px; padding: 3px 10px; border-radius: 20px; background: var(--accent-light); color: var(--accent-dark); margin-bottom: 1rem; }
+  @media (prefers-color-scheme: dark) { .sheet .focus-tag { background: #04342C; color: #9FE1CB; } }
+  .sheet p { font-size: 14px; color: var(--text2); line-height: 1.7; margin-bottom: 1rem; }
+  .sheet ul { padding-left: 1.2rem; margin-bottom: 1rem; }
+  .sheet li { font-size: 14px; color: var(--text2); line-height: 1.7; margin-bottom: 6px; }
+  .sheet .tip { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 10px 12px; font-size: 13px; color: var(--accent-dark); line-height: 1.6; }
+  @media (prefers-color-scheme: dark) { .sheet .tip { background: #04342C; color: #9FE1CB; } }
+
+  .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 10px 22px; border-radius: 30px; font-size: 14px; font-weight: 500; display: none; z-index: 200; white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>3-3-3 Workout Tracker</h1>
+  <p>Strength · Stability · Longevity</p>
+</div>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="showPage('workout',this)">Workout</button>
+  <button class="nav-btn" onclick="showPage('history',this)">History</button>
+  <button class="nav-btn" onclick="showPage('progress',this)">Progress</button>
+</nav>
+
+<div id="page-workout" class="page active">
+  <div class="day-tabs">
+    <button class="day-btn active" onclick="showDay('a',this)">Day A<br><span style="font-size:11px;opacity:.8">Lower</span></button>
+    <button class="day-btn" onclick="showDay('b',this)">Day B<br><span style="font-size:11px;opacity:.8">Upper</span></button>
+    <button class="day-btn" onclick="showDay('c',this)">Day C<br><span style="font-size:11px;opacity:.8">Full Body</span></button>
+  </div>
+
+  <div id="day-a" class="day-panel active">
+    <div class="card">
+      <div class="card-title">Day A: Lower Body & Unilateral Balance</div>
+      <div class="card-sub">Focus on glute engagement and ankle control</div>
+      <div class="section-lbl">Strength compounds</div>
+      <div id="ex-a-main"></div>
+      <div class="section-lbl">Balance finishers (3 rounds)</div>
+      <div id="ex-a-fin"></div>
+      <div style="margin-top:1rem;">
+        <label class="notes-label">Session notes</label>
+        <textarea class="notes" id="notes-a" placeholder="How did it feel? Any adjustments..."></textarea>
+      </div>
+      <button class="log-btn" onclick="logSession('a')">Log Session</button>
+    </div>
+  </div>
+
+  <div id="day-b" class="day-panel">
+    <div class="card">
+      <div class="card-title">Day B: Upper Body & Core Stability</div>
+      <div class="card-sub">Keep hips square and posture tall throughout</div>
+      <div class="section-lbl">Strength compounds</div>
+      <div id="ex-b-main"></div>
+      <div class="section-lbl">Balance finishers (3 rounds)</div>
+      <div id="ex-b-fin"></div>
+      <div style="margin-top:1rem;">
+        <label class="notes-label">Session notes</label>
+        <textarea class="notes" id="notes-b" placeholder="How did it feel? Any adjustments..."></textarea>
+      </div>
+      <button class="log-btn" onclick="logSession('b')">Log Session</button>
+    </div>
+  </div>
+
+  <div id="day-c" class="day-panel">
+    <div class="card">
+      <div class="card-title">Day C: Full Body & Dynamic Balance</div>
+      <div class="card-sub">Drive through the floor with your heels</div>
+      <div class="section-lbl">Strength compounds</div>
+      <div id="ex-c-main"></div>
+      <div class="section-lbl">Balance finishers (3 rounds)</div>
+      <div id="ex-c-fin"></div>
+      <div style="margin-top:1rem;">
+        <label class="notes-label">Session notes</label>
+        <textarea class="notes" id="notes-c" placeholder="How did it feel? Any adjustments..."></textarea>
+      </div>
+      <button class="log-btn" onclick="logSession('c')">Log Session</button>
+    </div>
+  </div>
+</div>
+
+<div id="page-history" class="page">
+  <div id="history-list"></div>
+</div>
+
+<div id="page-progress" class="page">
+  <div class="stat-row" id="stat-row"></div>
+  <div id="pb-list"></div>
+</div>
+
+<div class="overlay" id="overlay" onclick="closeSheet(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h2 id="sh-title"></h2>
+    <span class="focus-tag" id="sh-focus"></span>
+    <p id="sh-desc"></p>
+    <ul id="sh-cues"></ul>
+    <div class="tip" id="sh-tip"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DATA = {
+  a: {
+    main: [
+      {id:'goblet',name:'Goblet Squat',meta:'3 sets × 8–10 reps',badge:'strength',focus:'Strength / Form'},
+      {id:'rdl',name:'Romanian Deadlift (RDL)',meta:'3 sets × 10 reps',badge:'strength',focus:'Posterior Chain'},
+      {id:'ohp',name:'Overhead Press',meta:'3 sets × 8 reps',badge:'strength',focus:'Core / Shoulders'},
+    ],
+    fin: [
+      {id:'slstand',name:'Single Leg Stand (eyes closed)',meta:'45 sec per leg',badge:'balance',focus:'Ankle Stability',noW:true},
+      {id:'boxstep',name:'Lateral Box Step-Ups',meta:'12 reps per leg',badge:'balance',focus:'Glute Medius'},
+      {id:'wallsit',name:'3-Min Wall Sit / Squat Hold',meta:'3 mins total',badge:'balance',focus:'Mental Fitness',noW:true},
+    ]
+  },
+  b: {
+    main: [
+      {id:'bench',name:'Dumbbell Bench or Floor Press',meta:'3 sets × 10 reps',badge:'strength',focus:'Chest / Triceps'},
+      {id:'kbrow',name:'One-Arm Kettlebell Row',meta:'3 sets × 12 per side',badge:'strength',focus:'Back / Anti-Rotation'},
+      {id:'pulldown',name:'Lat Pulldown or Assisted Pull-up',meta:'3 sets × 10 reps',badge:'strength',focus:'Posture'},
+    ],
+    fin: [
+      {id:'around',name:'KB Around the Worlds',meta:'15 each way',badge:'balance',focus:'Weight Shifting'},
+      {id:'birddog',name:'Bird-Dog (Weighted)',meta:'12 reps per side',badge:'balance',focus:'Core Cross-Chain'},
+      {id:'farmers',name:"Kettlebell Farmer's Carry",meta:'3 × 40 metres',badge:'balance',focus:'Grip / Posture'},
+    ]
+  },
+  c: {
+    main: [
+      {id:'deadlift',name:'Deadlift (Trap Bar or Kettlebell)',meta:'3 sets × 8 reps',badge:'strength',focus:'Overall Strength'},
+      {id:'pushpress',name:'Push Press',meta:'3 sets × 8 reps',badge:'power',focus:'Power / Integration'},
+      {id:'bulgariansplit',name:'Bulgarian Split Squats',meta:'3 sets × 8 per side',badge:'strength',focus:'Strength / Balance'},
+    ],
+    fin: [
+      {id:'slrdl',name:'Single Leg RDL (Bodyweight / Light)',meta:'10 reps per side',badge:'balance',focus:'Proprioception'},
+      {id:'woodchop',name:'Woodchoppers (Cable or Med Ball)',meta:'15 reps per side',badge:'balance',focus:'Rotational Balance'},
+      {id:'treadmill',name:'Treadmill Incline Interval',meta:'3 mins total',badge:'balance',focus:'Fitness Finisher',noW:true},
+    ]
+  }
+};
+
+const GUIDES = {
+  goblet:{title:'Goblet Squat',focus:'Strength / Quad / Glute',desc:'A foundational lower body movement that teaches proper squat mechanics while building quad and glute strength.',cues:['Hold a kettlebell or dumbbell vertically at your chest with both hands cupped under the top','Stand with feet shoulder-width apart, toes turned out slightly (10–30°)','Sit down between your hips — imagine squatting over a drain in the floor','Drive knees out over toes; don\'t let them cave inward','Keep your chest tall and core braced throughout','Drive through your whole foot to stand — don\'t rock forward onto your toes'],tip:'Start lighter to nail depth before adding load. Heels elevated slightly on plates can help if ankles are tight.'},
+  rdl:{title:'Romanian Deadlift (RDL)',focus:'Hamstrings / Glutes / Lower Back',desc:'The RDL is one of the best exercises for posterior chain strength and protecting your lower back long-term.',cues:['Hold dumbbells or a barbell in front of your thighs, arms straight','Push your hips BACK — like you\'re trying to close a car door with your glutes','Lower the weight by hinging at the hip, keeping it close to your legs','Feel a stretch in the hamstrings — this is the target, not pain','Keep your spine neutral — flat as a table','Drive hips forward to stand — the hips do the work, not the back'],tip:'A common error is treating this like a squat. Keep a slight bend in the knees and focus entirely on the hip hinge motion.'},
+  ohp:{title:'Overhead Press',focus:'Shoulders / Core / Triceps',desc:'Builds shoulder strength and forces full-body tension — great for core stability.',cues:['Stand with feet hip-width, hold dumbbells at shoulder height, palms forward','Brace your core and squeeze your glutes before pressing','Press straight up overhead — finish with arms fully extended','Avoid flaring ribs — keep them down and core engaged','Lower with control back to start','Can be done seated for more shoulder isolation'],tip:'If you feel lower back strain, squeeze your glutes harder. The hips and core should be locked solid before you press.'},
+  slstand:{title:'Single Leg Stand (Eyes Closed)',focus:'Ankle Stability / Proprioception',desc:'Removing visual input forces your ankle and hip stabilisers to work hard — one of the most powerful exercises for fall prevention.',cues:['Stand on one foot near a wall or rack for safety','Close your eyes slowly once you feel stable','Micro-adjust constantly — the wobble is the point, your ankle stabilisers are firing','Keep a soft bend in the standing knee — don\'t lock it out','Hold for 45 seconds each side','Progress by standing on a folded mat or BOSU for extra challenge'],tip:'Balance training at this stage of life is as important as lifting. Research shows proprioceptive work significantly reduces injury risk.'},
+  boxstep:{title:'Lateral Box Step-Ups',focus:'Glute Medius / Hip Stability',desc:'Targets the often-neglected glute medius — the muscle that keeps your hip level when walking and running.',cues:['Stand beside a box or step (15–30cm height)','Step up sideways — lead leg does all the work, don\'t push off the back foot','Drive through the heel of the working leg','Stand tall at the top, then lower with control','Don\'t let your hip drop on the way down — this is where the glute medius gets tested','Hold a dumbbell to add load as you progress'],tip:'Weak glute medius is often the hidden cause of knee pain and hip issues. This exercise directly targets it.'},
+  wallsit:{title:'Wall Sit / Squat Hold',focus:'Quad Endurance / Mental Fitness',desc:'An isometric hold that builds quad endurance and mental toughness. No weight needed.',cues:['Slide your back down a wall until thighs are parallel to the floor','Feet flat on the ground, knees directly over (not past) ankles','Arms can rest on thighs or extend forward','Breathe steadily — don\'t hold your breath','For HIIT version: 30 seconds hold / 30 seconds rest × 3','For max challenge: hold the full 3 minutes straight'],tip:'The burn in your quads is normal and healthy — this is muscular endurance at work. The discomfort passes quickly after.'},
+  bench:{title:'Dumbbell Bench / Floor Press',focus:'Chest / Triceps / Anterior Shoulder',desc:'The floor press limits shoulder strain — excellent for anyone with shoulder history.',cues:['Lie on a bench or floor with dumbbells at chest height','Elbows at 45° from your body — not flared to 90°','Press up and slightly inward so dumbbells meet at the top','Lower until upper arms touch the floor (floor press) or feel a light chest stretch (bench)','Keep shoulder blades retracted (squeezed back) throughout','Don\'t arch your lower back — feet flat or elevated'],tip:'Floor press is preferred for beginners or those with shoulder sensitivity — no risk of over-lowering the weight.'},
+  kbrow:{title:'One-Arm Kettlebell Row',focus:'Back / Anti-Rotation / Core',desc:'A unilateral row that builds back strength and anti-rotation core stability simultaneously.',cues:['Place one hand and knee on a bench for support, or use a staggered stance','Hold the kettlebell in the hanging hand, arm straight','Row the KB up to your hip/lower ribs — not your shoulder','Keep your elbow close to your body as you pull','Resist rotating your torso — hips stay square to the floor','Lower slowly with control — the eccentric phase is just as valuable'],tip:'Think of it as "putting your elbow in your back pocket." This cue helps drive the right movement pattern.'},
+  pulldown:{title:'Lat Pulldown / Assisted Pull-up',focus:'Lats / Biceps / Posture',desc:'Directly targets the large back muscles that give you an upright posture and strong pulling ability.',cues:['Grip the bar slightly wider than shoulder-width','Sit tall with a slight lean back (10–15°)','Pull the bar to your upper chest — lead with your elbows, not your hands','Squeeze your shoulder blades together at the bottom','Resist the bar on the way up — don\'t let it pull your arms straight quickly','For pull-ups: use an assisted machine or resistance band until you can do 3 unassisted'],tip:'Lat pulldowns are one of the best exercises for posture correction — hugely beneficial for desk workers.'},
+  around:{title:'KB Around the Worlds',focus:'Core Anti-Rotation / Shoulder Stability',desc:'A deceptively challenging drill that forces your core to resist rotation as weight moves around your body.',cues:['Stand tall, feet shoulder-width, holding a light KB in both hands','Pass the KB around your body in a controlled circle','Your torso should remain PERFECTLY still — the weight moves, not your hips','Go 15 reps in each direction','If you feel yourself twisting or swaying, reduce the weight','Keep shoulders down and away from your ears'],tip:'Start with a light KB — even 8kg feels heavy when done correctly. This is coordination and control, not a strength exercise.'},
+  birddog:{title:'Bird-Dog (Weighted)',focus:'Core Stability / Spinal Control',desc:'One of the best exercises for spinal health — trains the deep stabilisers of your lower back without compressive load.',cues:['Start on all fours, wrists under shoulders, knees under hips','Brace your core like you\'re about to take a punch','Extend opposite arm and leg simultaneously — slowly and with control','Imagine balancing a glass of water on your back — don\'t let it spill','Hold the extended position for 2 seconds, then return under control','For weighted: hold a light dumbbell in the extended hand'],tip:'The magic is in the pause. Holding the extended position for 2 seconds is where the core work actually happens.'},
+  farmers:{title:"Kettlebell Farmer's Carry",focus:'Grip / Core / Posture / Cardiovascular',desc:"Often called the most functional exercise in existence — if you can carry a heavy load without collapsing, you're truly strong.",cues:['Hold a kettlebell in each hand at your sides','Stand tall: shoulders back and DOWN, not shrugged','Walk with small, controlled steps','Core braced throughout — prevent any side-to-side sway','Aim for 40 metres per set, or use time if space is limited','Maintain natural breathing — don\'t hold your breath'],tip:"This is a full-body exercise disguised as a walk. Heavy farmer's carries will improve grip, posture, and hip stability all at once."},
+  deadlift:{title:'Deadlift (Trap Bar or Kettlebell)',focus:'Total Body Strength / Posterior Chain',desc:'The king of strength exercises. The trap bar version is more back-friendly and recommended for beginners.',cues:['Stand with the bar/KB between your feet, feet hip-width apart','Hinge at the hip and bend knees to grip — don\'t squat down to it','Take the slack out of the bar before you pull','Drive your feet into the floor — push the earth away from you','Hips and shoulders rise at the same rate — don\'t let hips shoot up first','Stand tall at the top, squeeze glutes — don\'t hyper-extend your lower back'],tip:'For your first session: focus on form with a light weight. A proper deadlift at 40kg beats a sloppy one at 80kg every time.'},
+  pushpress:{title:'Push Press',focus:'Power / Full Body Integration',desc:'Combines a small leg dip with an overhead press — teaches your body to generate and transfer power from the ground up.',cues:['Hold dumbbells or a barbell at shoulder height','Small dip: bend knees 10–20° — this is your spring','Drive explosively through your legs and use that momentum to press the weight overhead','Finish with arms fully locked out overhead','Lower the weight back to shoulders with control','The leg drive is key — it makes this feel lighter than a strict press'],tip:'This is a power exercise — the first rep should feel almost effortless due to the leg drive. If it doesn\'t, the weight is too heavy.'},
+  bulgariansplit:{title:'Bulgarian Split Squat',focus:'Strength / Single-Leg Balance / Glutes',desc:'One of the hardest and most rewarding lower body exercises. Brilliant for balance, glute strength, and exposing imbalances between legs.',cues:['Place rear foot on a bench, front foot stepped out far enough that your front knee stays behind your toes when you drop','Lower straight DOWN — not forward. The rear leg assists balance only','Front foot does all the work: drive through the heel to stand','Keep your torso upright — don\'t lean over the front leg','Hold dumbbells at your sides to add load','Expect the first few sessions to feel wobbly — this gets better quickly'],tip:'Your rear foot position matters more than you think. Too close overloads the knee; too far and you\'ll lose balance. Experiment to find your spot.'},
+  slrdl:{title:'Single Leg RDL',focus:'Proprioception / Hip Hinge / Balance',desc:'A dynamic balance exercise that combines the hip hinge pattern with single-leg stability — one of the best for coordination.',cues:['Stand on one foot, slight bend in the standing knee','Hinge forward at the hip, extending the non-standing leg behind you for counterbalance','Reach your hands toward the ground (or hold a light KB)','Keep your hips square — resist the urge to let the lifted hip rotate open','Return to standing by driving the hip of the standing leg forward','Do this slowly and with full control — speed is the enemy here'],tip:'Looking at a spot on the floor 1 metre ahead helps with balance. As you improve, try looking up or closing your eyes for a true challenge.'},
+  woodchop:{title:'Woodchoppers',focus:'Rotational Power / Core / Balance',desc:'Trains the core to produce and control power through a twisting motion — functional for everyday movement.',cues:['Use a cable machine set high, or hold a med ball/dumbbell','Stand sideways to the cable, feet shoulder-width, slight bend in knees','Pull the cable diagonally across your body from high to low','The movement comes from your torso rotation — don\'t just use your arms','Follow through to complete the rotation, then resist the return','Control the eccentric (return) just as much as the pull'],tip:'Resist the urge to go heavy — this is a control and coordination exercise. 15 controlled reps beats 8 sloppy ones every time.'},
+  treadmill:{title:'Treadmill Incline Interval',focus:'Cardiovascular Fitness / Posterior Chain',desc:'Gets your heart rate up and targets the glutes and calves — a great low-impact alternative to sprinting.',cues:['Option A (Intervals): 30 seconds fast walk or run / 30 seconds rest at 2% incline — repeat 3 times','Option B (Power Hike): Set incline to 8–12%, brisk walking pace for 3 minutes straight','Keep posture upright — don\'t hold the rails unless needed for safety','Drive through your heel on each step — this activates the glutes','The higher the incline, the more your glutes and hamstrings work','Choose your option based on how your body feels that day'],tip:'The Power Hike at high incline is underrated — a genuine cardiovascular challenge that feels safer on the joints than running.'}
+};
+
+let logs = [];
+try { logs = JSON.parse(localStorage.getItem('333-logs') || '[]'); } catch(e){}
+function save() { try { localStorage.setItem('333-logs', JSON.stringify(logs)); } catch(e){} }
+
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id === 'history') renderHistory();
+  if(id === 'progress') renderProgress();
+}
+
+function showDay(day, btn) {
+  document.querySelectorAll('.day-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('day-'+day).classList.add('active');
+  btn.classList.add('active');
+}
+
+function buildExercises(day, type, containerId) {
+  const items = DATA[day][type];
+  document.getElementById(containerId).innerHTML = items.map(ex => `
+    <div class="ex-row">
+      <div class="ex-info">
+        <div class="ex-name">${ex.name}</div>
+        <div class="ex-meta">${ex.meta}</div>
+        <div class="ex-actions">
+          <span class="badge badge-${ex.badge}">${ex.focus}</span>
+          <button class="guide-link" onclick="openGuide('${ex.id}')">Form guide</button>
+        </div>
+      </div>
+      <div class="weight-wrap">
+        <span class="weight-lbl">${ex.noW ? 'Time / note' : 'Weight (kg)'}</span>
+        <input class="weight-input" type="${ex.noW ? 'text' : 'number'}" id="w-${ex.id}" placeholder="${ex.noW ? 'e.g. 45s' : 'e.g. 16'}" inputmode="${ex.noW ? 'text' : 'decimal'}">
+      </div>
+    </div>
+  `).join('');
+}
+
+function openGuide(id) {
+  const g = GUIDES[id]; if(!g) return;
+  document.getElementById('sh-title').textContent = g.title;
+  document.getElementById('sh-focus').textContent = g.focus;
+  document.getElementById('sh-desc').textContent = g.desc;
+  document.getElementById('sh-cues').innerHTML = g.cues.map(c => '<li>'+c+'</li>').join('');
+  document.getElementById('sh-tip').textContent = g.tip;
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeSheet(e) {
+  if(e.target === document.getElementById('overlay')) document.getElementById('overlay').classList.remove('open');
+}
+
+function logSession(day) {
+  const names = {a:'Day A — Lower Body',b:'Day B — Upper Body',c:'Day C — Full Body'};
+  const all = [...DATA[day].main, ...DATA[day].fin];
+  const weights = {};
+  all.forEach(ex => {
+    const v = document.getElementById('w-'+ex.id)?.value;
+    if(v) weights[ex.id] = {name:ex.name, value:v, noW:!!ex.noW};
+  });
+  logs.unshift({id:Date.now(), day, dayName:names[day], date:new Date().toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short',year:'numeric'}), weights, notes:document.getElementById('notes-'+day)?.value||''});
+  save();
+  all.forEach(ex => { const el = document.getElementById('w-'+ex.id); if(el) el.value=''; });
+  const n = document.getElementById('notes-'+day); if(n) n.value='';
+  toast('Session logged!');
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(()=>t.style.display='none', 2200);
+}
+
+function renderHistory() {
+  const el = document.getElementById('history-list');
+  if(!logs.length) { el.innerHTML='<div class="empty">No sessions logged yet.<br>Complete a workout and tap Log Session!</div>'; return; }
+  el.innerHTML = logs.map(log => {
+    const pills = Object.values(log.weights).map(w=>`<div class="pill">${w.name.split('(')[0].trim()} <strong>${w.noW?w.value:w.value+'kg'}</strong></div>`).join('');
+    return `<div class="history-item">
+      <div class="hi-header">
+        <div><div class="hi-day">${log.dayName}</div><div class="hi-date">${log.date}</div></div>
+        <button class="del-btn" onclick="deleteLog(${log.id})">Remove</button>
+      </div>
+      <div class="pills">${pills||'<span style="font-size:12px;color:var(--text2)">No weights recorded</span>'}</div>
+      ${log.notes?`<div class="hi-note">"${log.notes}"</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function deleteLog(id) {
+  logs = logs.filter(l=>l.id!==id); save(); renderHistory();
+}
+
+function renderProgress() {
+  const days = {a:logs.filter(l=>l.day==='a').length, b:logs.filter(l=>l.day==='b').length, c:logs.filter(l=>l.day==='c').length};
+  const fav = Object.entries(days).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('stat-row').innerHTML = `
+    <div class="stat"><div class="stat-val">${logs.length}</div><div class="stat-lbl">Total sessions</div></div>
+    <div class="stat"><div class="stat-val">${days.a+days.b+days.c>0?Math.round((days.a+days.b+days.c)/Math.max(1,logs.length)*100)+'%':'—'}</div><div class="stat-lbl">Completion</div></div>
+    <div class="stat"><div class="stat-val">${fav&&fav[1]>0?fav[0].toUpperCase():'—'}</div><div class="stat-lbl">Fave day</div></div>
+  `;
+  const pbs = {};
+  logs.forEach(log => Object.entries(log.weights).forEach(([id,w])=>{
+    if(!w.noW){ const kg=parseFloat(w.value); if(!isNaN(kg)&&(!pbs[id]||kg>pbs[id].kg)) pbs[id]={name:w.name,kg}; }
+  }));
+  const pbHtml = Object.entries(pbs).map(([,pb])=>`
+    <div class="pb-row">
+      <span class="pb-name">${pb.name.split('(')[0].trim()}</span>
+      <span class="pb-val">${pb.kg} kg <span class="pr-tag">PB</span></span>
+    </div>`).join('');
+  document.getElementById('pb-list').innerHTML = pbHtml ? `
+    <p style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:.6rem;">Personal bests</p>
+    <div class="card">${pbHtml}</div>` : '<div class="empty">Log some sessions to see your personal bests here!</div>';
+}
+
+['a','b','c'].forEach(day => {
+  buildExercises(day,'main','ex-'+day+'-main');
+  buildExercises(day,'fin','ex-'+day+'-fin');
+});
+</script>
+</body>
+</html>
